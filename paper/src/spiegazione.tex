@@ -1,0 +1,79 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[italian]{babel}
+\input{../stile}
+
+\title{Un segnale che funziona e non paga\\[2pt]
+\large Spiegazione semplice}
+\author{Tommaso Zeri}
+\date{Novembre 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Di che cosa parliamo}
+
+Su Binance il bitcoin si compra in due modi. Il primo è lo \emph{spot}: compri il bitcoin e lo possiedi. Il secondo è il \emph{perpetual}, un contratto che segue il prezzo del bitcoin senza che tu lo possieda davvero. I due prezzi sono quasi uguali, ma non del tutto. La loro differenza si chiama \emph{basis} e oscilla di circa un basis point, cioè un centesimo di punto percentuale. Su un bitcoin da centomila dollari un basis point vale dieci dollari.
+
+Quando il prezzo del perpetual si muove, quello dello spot di solito lo segue entro pochi millisecondi o al massimo un secondo. Per un istante quindi la basis si allarga, e poi si richiude. Il modello della tesi (un processo di Hawkes) descrive proprio questo: ogni movimento di prezzo rende più probabili altri movimenti, sullo stesso mercato o sull'altro. Una buona analogia è una sala dove qualcuno ride e altri ridono subito dopo. Se conosci chi ha riso e quando, puoi prevedere chi riderà nei prossimi secondi.
+
+Da questo modello si ricava una previsione: \emph{nei prossimi dieci secondi la basis salirà o scenderà?} La domanda dell'articolo è se con questa previsione si guadagna.
+
+\section*{Come si controlla senza barare}
+
+Il test si chiama \emph{backtest}: si prende la storia passata e si simula che cosa sarebbe successo seguendo la regola. Il pericolo principale è il \emph{look-ahead}, cioè usare per decidere un'informazione che in quel momento non avresti avuto. Sarebbe come scommettere su una partita conoscendo già il risultato.
+
+Per evitarlo ogni giornata è divisa in sei blocchi di quattro ore. Il modello impara dal blocco precedente e viene usato sul blocco successivo, che non ha mai visto. Ogni decisione usa soltanto i movimenti di prezzo già avvenuti. Le soglie della regola sono fissate prima, su una griglia, e non vengono ritoccate per far tornare i conti. Il test copre dieci giornate di bitcoin tra dicembre 2022 e settembre 2026 e due di ether.
+
+\section*{Primo risultato: la previsione funziona}
+
+Se si potesse comprare e vendere al prezzo medio, il \emph{mid}, la regola guadagnerebbe tra $0{,}4$ e $1{,}3$ basis point per operazione. Ma al prezzo medio non si compra. Chi vuole comprare subito paga il prezzo più alto esposto (l'\emph{ask}), chi vuole vendere subito incassa il più basso (il \emph{bid}). La differenza tra i due è lo \emph{spread}. Pagando lo spread su entrambi i mercati, il guadagno scende a $0{,}1$--$0{,}7$ basis point per operazione, $0{,}44$ in media sui giorni di bitcoin. È positivo in tutti i dodici giorni del test e resta circa uguale se gli ordini arrivano con un ritardo (\emph{latenza}) fino a dieci millisecondi.
+
+Questi numeri sono \emph{lordi}: non contengono ancora le commissioni dell'exchange.
+
+\section*{Perché lo spread costa più del previsto}
+
+In media, attraversare lo spread dei due mercati costa tra $0{,}08$ e $0{,}26$ basis point. Il segnale però ne perde circa $0{,}40$ passando dal prezzo medio al prezzo reale. Il motivo è il momento in cui il segnale decide. Decide subito dopo un movimento di prezzo, e proprio in quell'istante lo spread del mercato che si è appena mosso è largo due o tre volte il normale. È come voler comprare un ombrello quando comincia a piovere: il prezzo è più alto proprio quando ti serve.
+
+\section*{La regola ingenua e la selezione avversa}
+
+Una regola più semplice dice: \enquote{il perpetual si è mosso, lo spot non ancora, compro lo spot al vecchio prezzo prima che si aggiorni}. Al prezzo medio questa regola sembra la migliore, con oltre un basis point per operazione. Al prezzo reale perde in dieci giorni su dodici.
+
+Il fenomeno si chiama \emph{selezione avversa}. Pensa a un banco del mercato con un cartellino del prezzo vecchio. Se tutti sanno che il prezzo vero è già cambiato, il primo ad arrivare compra a quel prezzo vecchio, e il primo non sei tu: è chi ha il computer più vicino e più veloce. A te restano le occasioni che nessuno voleva, cioè quelle che fanno perdere. Più un segnale è pubblico e ovvio, più è probabile che qualcun altro lo sfrutti prima.
+
+\section*{Le commissioni mangiano tutto}
+
+Ogni operazione sulla basis richiede quattro scambi: si apre e si chiude una posizione su ciascuno dei due mercati. Binance fa pagare una commissione su ogni scambio. Il costo di un'operazione completa va da circa $2{,}2$ basis point per il cliente più grande che lascia ordini nel libro, a $8$ per lo stesso cliente se prende gli ordini degli altri, fino a $30$ per un conto normale. Il conto in tasca si fa così:
+\[
+\text{guadagno netto} = \text{guadagno lordo} - \text{commissioni} \approx 0{,}44 - 2{,}2 < 0 .
+\]
+Nel caso più favorevole il guadagno lordo è circa un quarto della commissione. Per un conto normale la commissione è più di dieci volte il guadagno. Nel test la regola indovina la direzione circa sette volte su dieci. Somiglia a una scommessa che vinci spesso, ma in cui ogni puntata costa più di quanto vinci: più giochi, più perdi.
+
+\section*{E se si aspettasse invece di inseguire?}
+
+Chi lascia un ordine fermo nel libro (il \emph{maker}) non paga lo spread e paga commissioni più basse. Sembrerebbe la soluzione. Il problema è \emph{quando} l'ordine viene eseguito. Per stimarlo la tesi usa una regola prudente: un ordine fermo conta come eseguito solo quando il prezzo del mercato lo supera.
+
+Il risultato è istruttivo. Le poche operazioni in cui entrambi gli ordini vengono eseguiti guadagnano circa un basis point. Ma sono una minoranza, e si riconoscono solo a posteriori. Nella maggior parte dei casi i due mercati si muovono insieme, viene eseguito solo l'ordine dalla parte sbagliata e si resta con mezza posizione mentre il prezzo va contro. Queste operazioni perdono in media $3{,}4$ basis point. Dopo le commissioni nessuna variante chiude in attivo in nessuno dei dodici giorni.
+
+\section*{Glossario}
+
+\begin{description}
+\item[basis] differenza tra il prezzo del perpetual e quello dello spot.
+\item[basis point (bp)] un centesimo di punto percentuale, $0{,}01\%$.
+\item[bid / ask] il prezzo più alto a cui qualcuno compra e il più basso a cui qualcuno vende in quel momento.
+\item[mid] il punto medio tra bid e ask; un prezzo di riferimento, non un prezzo a cui si scambia.
+\item[spread] la distanza tra ask e bid; è il costo di comprare e rivendere subito.
+\item[touch] i prezzi migliori esposti nel libro, cioè il bid e l'ask; \enquote{eseguire al touch} vuol dire pagare lo spread.
+\item[maker / taker] il maker lascia un ordine fermo e aspetta; il taker accetta subito un ordine già esposto.
+\item[latenza] il ritardo tra la decisione e l'arrivo dell'ordine al mercato.
+\item[backtest] simulazione di una strategia sui dati del passato.
+\item[look-ahead] errore di un backtest che usa informazioni non ancora disponibili al momento della decisione.
+\item[selezione avversa] la tendenza a essere eseguiti proprio negli scambi che fanno perdere, perché chi sta dall'altra parte sa qualcosa in più o arriva prima.
+\item[processo di Hawkes] modello in cui ogni evento rende più probabili altri eventi nell'immediato futuro.
+\end{description}
+
+\section*{Cosa portare a casa}
+
+Una previsione può essere giusta in modo misurabile e ripetibile e non valere niente in pratica. Qui il modello indovina la direzione della basis più spesso di quanto farebbe il caso, ogni giorno, ma il vantaggio è di mezzo basis point, mentre aprire e chiudere un'operazione costa da due a trenta basis point di commissioni. Il segnale scatta proprio quando lo spread è più caro, e la regola più ovvia viene battuta da chi è più veloce. Prima di credere a un backtest conviene chiedersi a quale prezzo si sarebbe davvero scambiato e quanto sarebbe costato farlo.
+
+Questo testo è una spiegazione divulgativa di un lavoro di ricerca e non è una raccomandazione di investimento. È tratto dalla tesi magistrale dell'autore.
+\end{document}
